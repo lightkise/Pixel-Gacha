@@ -1,5 +1,5 @@
 /* ============================================================
-   🏆 灵感盒子 - 物理预判 + 防误触音效优化版
+   🏆 灵感盒子 - 物理预判 + 防误触音效优化版 (手机丝滑适配版)
    ============================================================ */
 
 const canvas = document.getElementById('canvas');
@@ -26,7 +26,7 @@ const POOL_SIZE = 6;
 for (let i = 0; i < POOL_SIZE; i++) {
     const s = new Audio('assets/pop.mp3');
     s.preload = "auto";
-    s.volume = 0.25; // 稍微调低，防止大量球堆积时太吵
+    s.volume = 0.25; 
     popPool.push(s);
 }
 
@@ -34,21 +34,17 @@ let poolIndex = 0;
 let lastPopTime = 0; 
 let isAudioStarted = false;
 let lastClickIndex = -1;
-// ✨ 新增：页面活跃监测锁
 let isPointerActive = false; 
 
 const mouse = { x: null, y: null, radius: 180, lastX: null, lastY: null, vx: 0, vy: 0 };
 const kaomojis = ["(๑• . •๑)", "(╯3╰)", "(*^▽^*)", "(O^~^O)", "(≖ᴗ≖)✧", "(๑¯∀¯๑)", "Σ( ° △ °|||)"];
 
-// --- 🔊 触发拨开音效 (增加活跃锁检查) ---
 function playPopEffect() {
-    // ✨ 只有当指针在页面内活跃时才允许播放
     if (!isPointerActive) return;
-
     const now = Date.now();
     if (now - lastPopTime > 65) {
         const s = popPool[poolIndex];
-        s.currentTime = 0.08; // 跳过静音期
+        s.currentTime = 0.08; 
         s.play().catch(() => {});
         poolIndex = (poolIndex + 1) % POOL_SIZE;
         lastPopTime = now;
@@ -71,6 +67,14 @@ function refreshText(e) {
     if (!isAudioStarted) {
         bgm.play().catch(() => {});
         isAudioStarted = true;
+    }
+
+    // ✨ 手机端自动启动性能保护：限制场上扭蛋数量
+    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+    const limit = isMobile ? 10 : 80; // 手机限10个，电脑维持原感
+    while (gachaList.length >= limit) {
+        const oldest = gachaList.shift();
+        if (oldest && oldest.el) oldest.el.remove();
     }
 
     const titleEl = document.querySelector('.title');
@@ -102,7 +106,8 @@ class Gacha {
     }
     setGachaStyle() {
         const c = this.color;
-        this.el.style.cssText = `position:fixed;left:0;top:0;width:4px;height:4px;pointer-events:none;z-index:999;image-rendering:pixelated;box-shadow:8px 0 white,12px 0 white,16px 0 white,4px 4px white,8px 4px rgba(255,255,255,0.4),12px 4px rgba(255,255,255,0.4),16px 4px rgba(255,255,255,0.4),20px 4px white,0px 8px white,4px 8px rgba(255,255,255,0.3),20px 8px rgba(255,255,255,0.3),24px 8px white,0px 12px ${c},4px 12px ${c},8px 12px ${c},12px 12px ${c},16px 12px ${c},20px 12px ${c},24px 12px ${c},4px 16px ${c},8px 16px ${c},12px 16px ${c},16px 16px ${c},20px 16px ${c},8px 20px ${c},12px 20px ${c},16px 20px ${c};`;
+        // ✨ 增加 will-change 提示显卡提前准备
+        this.el.style.cssText = `position:fixed;left:0;top:0;width:4px;height:4px;pointer-events:none;z-index:999;image-rendering:pixelated;will-change:transform;box-shadow:8px 0 white,12px 0 white,16px 0 white,4px 4px white,8px 4px rgba(255,255,255,0.4),12px 4px rgba(255,255,255,0.4),16px 4px rgba(255,255,255,0.4),20px 4px white,0px 8px white,4px 8px rgba(255,255,255,0.3),20px 8px rgba(255,255,255,0.3),24px 8px white,0px 12px ${c},4px 12px ${c},8px 12px ${c},12px 12px ${c},16px 12px ${c},20px 12px ${c},24px 12px ${c},4px 16px ${c},8px 16px ${c},12px 16px ${c},16px 16px ${c},20px 16px ${c},8px 20px ${c},12px 20px ${c},16px 20px ${c};`;
     }
     update(index) {
         this.vy += this.gravity; 
@@ -116,11 +121,9 @@ class Gacha {
         if (distM < 95) {
             const force = (95 - distM) / 95;
             const angle = Math.atan2(dyM, dxM);
-            
             this.vx += Math.cos(angle) * force * 6 + mouse.vx * 0.25;
             this.vy += Math.sin(angle) * force * 6 + mouse.vy * 0.25;
 
-            // 只有当鼠标速度够快 且 指针正在页面内滑动时响
             if (Math.abs(mouse.vx) > 2 || Math.abs(mouse.vy) > 2) {
                 playPopEffect();
             }
@@ -142,22 +145,24 @@ class Gacha {
                 this.x += Math.cos(angle) * overlap * 0.5; this.y += Math.sin(angle) * overlap * 0.5;
             }
         }
-        this.el.style.transform = `translate3d(${this.x}px, ${this.y}px, 0)`;
+
+        // ✨ 手机端自动启用 translate3d 开启硬件加速
+        const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+        if (isMobile) {
+            this.el.style.transform = `translate3d(${this.x}px, ${this.y}px, 0)`;
+        } else {
+            this.el.style.transform = `translate(${this.x}px, ${this.y}px)`;
+        }
     }
 }
 
-// --- ✨ 核心改进：精确的指针监测 ---
-
-// 鼠标进入页面：激活音效
+// --- ✨ 指针监测 ---
 window.addEventListener('mouseenter', () => { isPointerActive = true; });
-// 鼠标离开页面：冻结音效 (防止任务栏/弹窗误触)
 window.addEventListener('mouseleave', () => { isPointerActive = false; });
-// 针对触摸屏：手指按下激活，抬起冻结
 window.addEventListener('touchstart', () => { isPointerActive = true; }, {passive: false});
 window.addEventListener('touchend', () => { isPointerActive = false; });
 
 window.addEventListener('mousemove', (e) => {
-    // 如果之前没有 mouse.lastX (比如刚进页面)，先初始化它，防止产生巨大的瞬间速度
     if (mouse.lastX === null) {
         mouse.lastX = e.x;
         mouse.lastY = e.y;
@@ -166,12 +171,9 @@ window.addEventListener('mousemove', (e) => {
     mouse.vy = e.y - mouse.lastY;
     mouse.lastX = e.x; mouse.lastY = e.y;
     mouse.x = e.x; mouse.y = e.y;
-    
-    // 如果鼠标在动，强制确保处于活跃状态
     isPointerActive = true; 
 });
 
-// 针对移动端滑动的额外支持
 window.addEventListener('touchmove', (e) => {
     const touch = e.touches[0];
     if (mouse.lastX === null) {
@@ -223,3 +225,4 @@ function animate() {
 init(); animate();
 window.addEventListener('resize', init);
 document.querySelector('.title').addEventListener('mousedown', refreshText);
+document.querySelector('.title').addEventListener('touchstart', refreshText);
