@@ -13,6 +13,9 @@
 
 ---
 
+<img width="2489" height="1422" alt="1c522e1c-6a71-41ca-941d-84a93bb60176" src="https://github.com/user-attachments/assets/601852ce-6440-4b8b-9641-0fe484cf031d" />
+
+
 ## 🌟 核心亮点
 
 * **👾 纯正像素美学**：完全使用 CSS `box-shadow` 栈和 `canvas` 像素化渲染，无需外部图片资源，实现极致轻量的视觉风格。
