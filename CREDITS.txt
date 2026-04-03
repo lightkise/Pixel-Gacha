@@ -1,0 +1,81 @@
+============================================================
+🏆 INSPIRATION GASHAPON - CREDITS & ASSET LIST (FINAL)
+============================================================
+
+This file documents all third-party assets, sound effects, and 
+technical references used in this project. All resources follow 
+their original open-source licenses.
+
+------------------------------------------------------------
+🎵 [ENGLISH] AUDIO ASSETS (Total: 5 Files)
+------------------------------------------------------------
+
+1. [BGM] bgm.mp3
+   - Source: Pixabay / Self-arranged
+   - Usage: Looping background ambient music.
+
+2. [SFX] click1.mp3, click2.mp3, click3.mp3 (3 Variations)
+   - Source: Pixabay (Community - Wine Glass Series)
+   - Link: https://pixabay.com/sound-effects/search/wine-glass/
+   - License: Pixabay Content License (Royalty Free)
+   - Logic: Simulates the crisp metallic impact when clicking the title.
+
+3. [SFX] pop.mp3 (Swoosh Effect - NEW)
+   - Source: Pixabay / Dragon Studio
+   - Original Name: swoosh-487669.mp3
+   - Link: https://pixabay.com/sound-effects/dragon-studio-copyright-free-swoosh-487669/
+   - License: Pixabay Content License
+   - Logic: Triggered when the cursor "flicks" or clears gashapons away, 
+            enhancing the airy feeling of physical repulsion.
+
+------------------------------------------------------------
+🎨 [ENGLISH] VISUALS & FONTS
+------------------------------------------------------------
+
+1. [Core Font] "Press Start 2P"
+   - Designer: CodeMan38
+   - Source: Google Fonts (OFL License)
+   - Style: Classic 8-bit pixel style for consistent text rendering.
+
+2. [Graphics] Golden Pixel Cloud
+   - Tech: Pure CSS linear-gradient stacking with image-rendering: pixelated.
+
+3. [Particles] HTML5 Canvas Starfield
+   - Tech: Dynamic physics particles with real-time repulsion (vx, vy).
+
+------------------------------------------------------------
+🏆 [中文] 灵感盒子 - 项目归属与资产清单 (最终版)
+------------------------------------------------------------
+
+本文件记录了本项目中使用的所有第三方开源资产、音效及技术引用。
+
+1. [背景音乐] bgm.mp3
+   - 来源: Pixabay / 个人混编
+
+2. [点击音效] click1.mp3, click2.mp3, click3.mp3 (共3个文件)
+   - 来源: Pixabay (社区贡献 - Wine Glass 系列)
+   - 授权: Pixabay Content License (免版税，允许商业用途)
+   - 逻辑: 随机触发，模拟按下投币/触发机关的清脆撞击声。
+
+3. [互动音效] pop.mp3 (Swoosh 效果 - 新增)
+   - 来源: Pixabay / Dragon Studio
+   - 原文件名: swoosh-487669.mp3
+   - 授权: Pixabay Content License
+   - 逻辑: 当鼠标高速划过(Flick)落地的扭蛋并将其弹开时触发，增强物理排斥感。
+
+4. [视觉与字体]
+   - 核心字体: "Press Start 2P" (OFL 开源协议)
+   - 图形渲染: 黄金像素云 (纯 CSS 线性渐变堆叠)
+   - 粒子效果: HTML5 Canvas 动态物理粒子，支持实时位移反馈。
+
+------------------------------------------------------------
+💻 TECH STACK / 技术栈
+------------------------------------------------------------
+- Engine: Vanilla JavaScript (ES6+), HTML5 Canvas, CSS3
+- Physics: Custom AABB Collision & Gravity Simulation (v26.03.11)
+- Special Thanks: Google Gemini AI (Co-development)
+
+============================================================
+Generated on: 2026-04-02
+License: MIT License (Code Only)
+============================================================

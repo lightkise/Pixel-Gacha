@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>像素扭蛋</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* 额外补丁：确保像素文字换行美观 */
+        .title { 
+            line-height: 1.8; /* 像素字体建议行高大一点 */
+            text-align: center; 
+        }
+        /* 针对颜文字 span 的样式锁定 */
+        .title span { 
+            font-size: 0.6em; 
+            opacity: 0.9; 
+            display: block; 
+            margin-top: 10px; 
+            color: #00ffcc; /* 像素荧光绿，如果不想要可以删掉这一行 */
+        }
+    </style>
+</head>
+<body>
+    <div class="pixel-sky-bg"></div>
+    
+    <canvas id="canvas"></canvas>
+    
+    <div class="main-content">
+        <div class="title" id="title">
+            GASHAPON <br> 
+            <span>CLICK ME (๑•̀ㅂ•́)و</span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
