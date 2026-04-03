@@ -1,5 +1,5 @@
 /* ============================================================
-   🏆 灵感盒子 - 物理预判 + 防误触音效优化版 (手机丝滑适配版)
+   🏆 灵感盒子 - 物理预判 + 手机PC双端丝滑版
    ============================================================ */
 
 const canvas = document.getElementById('canvas');
@@ -8,17 +8,20 @@ let particles = [];
 let gachaList = []; 
 let globalTick = 0; 
 
-// --- 🎵 音频系统 ---
+// --- 🎵 音频系统：使用对象池避免手机卡顿和电脑延迟 ---
 const bgm = new Audio('bgm.mp3'); 
 bgm.loop = true;
 bgm.volume = 0.15; 
 
-const clickSounds = [
-    new Audio('assets/click1.mp3'), 
-    new Audio('assets/click2.mp3'), 
-    new Audio('assets/click3.mp3')
-];
-clickSounds.forEach(s => { s.volume = 0.4; s.preload = "auto"; });
+// 为每个点击音效准备 3 个副本，循环使用，解决连击问题
+const clickPool = {
+    1: [new Audio('assets/click1.mp3'), new Audio('assets/click1.mp3'), new Audio('assets/click1.mp3')],
+    2: [new Audio('assets/click2.mp3'), new Audio('assets/click2.mp3'), new Audio('assets/click2.mp3')],
+    3: [new Audio('assets/click3.mp3'), new Audio('assets/click3.mp3'), new Audio('assets/click3.mp3')]
+};
+// 统一预设音量
+Object.values(clickPool).flat().forEach(s => { s.volume = 0.4; s.preload = "auto"; });
+let poolCounters = { 1: 0, 2: 0, 3: 0 };
 
 const popPool = [];
 const POOL_SIZE = 6; 
@@ -57,17 +60,18 @@ function refreshText(e) {
         e.stopPropagation();
     }
 
-    let randomIndex;
+    // 随机选一个音效组 (1, 2, 或 3)
+    let soundGroup;
     do { 
-        randomIndex = Math.floor(Math.random() * clickSounds.length); 
-    } while (randomIndex === lastClickIndex && clickSounds.length > 1);
-    lastClickIndex = randomIndex;
+        soundGroup = Math.floor(Math.random() * 3) + 1; 
+    } while (soundGroup === lastClickIndex);
+    lastClickIndex = soundGroup;
     
-    // 【核心修复点】：不要直接操作 clickSounds[randomIndex]，而是克隆它
-    // 这样在手机上连续点击时，每一个音效都是独立的，不会互相掐断导致卡顿或报错
-    const soundInstance = clickSounds[randomIndex].cloneNode();
-    soundInstance.volume = 0.4;
-    soundInstance.play().catch(() => {});
+    // 从该组的弹药库里取出一个播放，解决“喇叭弹窗”和“点击切断”
+    const s = clickPool[soundGroup][poolCounters[soundGroup]];
+    s.currentTime = 0;
+    s.play().catch(() => {});
+    poolCounters[soundGroup] = (poolCounters[soundGroup] + 1) % 3;
 
     if (!isAudioStarted) {
         bgm.play().catch(() => {});
@@ -94,7 +98,7 @@ function refreshText(e) {
     gachaList.push(new Gacha(startX, startY));
 }
 
-// --- 🥚 扭蛋类 ---
+// --- 🥚 扭蛋类 (完全保持原样) ---
 class Gacha {
     constructor(x, y) {
         this.radius = 14; 
@@ -113,35 +117,23 @@ class Gacha {
         this.el.style.cssText = `position:fixed;left:0;top:0;width:4px;height:4px;pointer-events:none;z-index:999;image-rendering:pixelated;will-change:transform;box-shadow:8px 0 white,12px 0 white,16px 0 white,4px 4px white,8px 4px rgba(255,255,255,0.4),12px 4px rgba(255,255,255,0.4),16px 4px rgba(255,255,255,0.4),20px 4px white,0px 8px white,4px 8px rgba(255,255,255,0.3),20px 8px rgba(255,255,255,0.3),24px 8px white,0px 12px ${c},4px 12px ${c},8px 12px ${c},12px 12px ${c},16px 12px ${c},20px 12px ${c},24px 12px ${c},4px 16px ${c},8px 16px ${c},12px 16px ${c},16px 16px ${c},20px 16px ${c},8px 20px ${c},12px 20px ${c},16px 20px ${c};`;
     }
     update(index) {
-        this.vy += this.gravity; 
-        this.x += this.vx; 
-        this.y += this.vy;
-
-        const dxM = this.x - mouse.x; 
-        const dyM = this.y - mouse.y;
+        this.vy += this.gravity; this.x += this.vx; this.y += this.vy;
+        const dxM = this.x - mouse.x; const dyM = this.y - mouse.y;
         const distM = Math.sqrt(dxM*dxM + dyM*dyM);
-        
         if (distM < 95) {
             const force = (95 - distM) / 95;
             const angle = Math.atan2(dyM, dxM);
             this.vx += Math.cos(angle) * force * 6 + mouse.vx * 0.25;
             this.vy += Math.sin(angle) * force * 6 + mouse.vy * 0.25;
-
-            if (Math.abs(mouse.vx) > 2 || Math.abs(mouse.vy) > 2) {
-                playPopEffect();
-            }
+            if (Math.abs(mouse.vx) > 2 || Math.abs(mouse.vy) > 2) playPopEffect();
         }
-
         if (this.x < -60 || this.x > window.innerWidth + 60) { 
-            this.el.remove(); 
-            gachaList.splice(index, 1); 
-            return; 
+            this.el.remove(); gachaList.splice(index, 1); return; 
         }
         if (this.y + this.radius * 2 > window.innerHeight) {
             this.y = window.innerHeight - this.radius * 2;
             this.vy *= -this.bounce; this.vx *= 0.9;
         }
-
         for (let other of gachaList) {
             if (other === this) continue;
             const dx = this.x - other.x; const dy = this.y - other.y;
@@ -156,36 +148,22 @@ class Gacha {
     }
 }
 
-// --- ✨ 指针监测 ---
+// --- ✨ 指针监测 (保持原样) ---
 window.addEventListener('mouseenter', () => { isPointerActive = true; });
 window.addEventListener('mouseleave', () => { isPointerActive = false; });
-
-window.addEventListener('touchstart', (e) => { 
-    isPointerActive = true; 
-}, {passive: false});
-
+window.addEventListener('touchstart', (e) => { isPointerActive = true; }, {passive: false});
 window.addEventListener('touchend', () => { isPointerActive = false; });
-
 window.addEventListener('mousemove', (e) => {
-    if (mouse.lastX === null) {
-        mouse.lastX = e.clientX;
-        mouse.lastY = e.clientY;
-    }
-    mouse.vx = e.clientX - mouse.lastX;
-    mouse.vy = e.clientY - mouse.lastY;
+    if (mouse.lastX === null) { mouse.lastX = e.clientX; mouse.lastY = e.clientY; }
+    mouse.vx = e.clientX - mouse.lastX; mouse.vy = e.clientY - mouse.lastY;
     mouse.lastX = e.clientX; mouse.lastY = e.clientY;
     mouse.x = e.clientX; mouse.y = e.clientY;
     isPointerActive = true; 
 });
-
 window.addEventListener('touchmove', (e) => {
     const touch = e.touches[0];
-    if (mouse.lastX === null) {
-        mouse.lastX = touch.clientX;
-        mouse.lastY = touch.clientY;
-    }
-    mouse.vx = touch.clientX - mouse.lastX;
-    mouse.vy = touch.clientY - mouse.lastY;
+    if (mouse.lastX === null) { mouse.lastX = touch.clientX; mouse.lastY = touch.clientY; }
+    mouse.vx = touch.clientX - mouse.lastX; mouse.vy = touch.clientY - mouse.lastY;
     mouse.lastX = touch.clientX; mouse.lastY = touch.clientY;
     mouse.x = touch.clientX; mouse.y = touch.clientY;
     isPointerActive = true;
@@ -229,11 +207,8 @@ function animate() {
 
 init(); animate();
 window.addEventListener('resize', init);
-
 const title = document.querySelector('.title');
 if (title) {
     title.addEventListener('mousedown', refreshText);
-    title.addEventListener('touchstart', (e) => {
-        refreshText(e);
-    }, {passive: false});
+    title.addEventListener('touchstart', (e) => { refreshText(e); }, {passive: false});
 }
