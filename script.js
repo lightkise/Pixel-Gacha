@@ -20,7 +20,6 @@ const clickSounds = [
 ];
 clickSounds.forEach(s => { s.volume = 0.4; s.preload = "auto"; });
 
-// 音频池：解决并发播放延迟
 const popPool = [];
 const POOL_SIZE = 6; 
 for (let i = 0; i < POOL_SIZE; i++) {
@@ -53,7 +52,11 @@ function playPopEffect() {
 
 // --- 🖱️ 点击喷射逻辑 ---
 function refreshText(e) {
-    if(e) e.preventDefault();
+    // 关键修复：彻底切断系统默认行为和事件冒泡，防止延迟
+    if(e) {
+        if(e.cancelable) e.preventDefault();
+        e.stopPropagation();
+    }
 
     let randomIndex;
     do { 
@@ -62,16 +65,16 @@ function refreshText(e) {
     lastClickIndex = randomIndex;
     
     clickSounds[randomIndex].currentTime = 0;
-    clickSounds[randomIndex].play();
+    clickSounds[randomIndex].play().catch(() => {});
 
     if (!isAudioStarted) {
         bgm.play().catch(() => {});
         isAudioStarted = true;
     }
 
-    // ✨ 手机端自动启动性能保护：限制场上扭蛋数量
+    // 手机端自动启动性能保护
     const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-    const limit = isMobile ? 10 : 80; // 手机限10个，电脑维持原感
+    const limit = isMobile ? 10 : 80; 
     while (gachaList.length >= limit) {
         const oldest = gachaList.shift();
         if (oldest && oldest.el) oldest.el.remove();
@@ -106,7 +109,7 @@ class Gacha {
     }
     setGachaStyle() {
         const c = this.color;
-        // ✨ 增加 will-change 提示显卡提前准备
+        // 增加 will-change 强制开启手机 GPU 合成层
         this.el.style.cssText = `position:fixed;left:0;top:0;width:4px;height:4px;pointer-events:none;z-index:999;image-rendering:pixelated;will-change:transform;box-shadow:8px 0 white,12px 0 white,16px 0 white,4px 4px white,8px 4px rgba(255,255,255,0.4),12px 4px rgba(255,255,255,0.4),16px 4px rgba(255,255,255,0.4),20px 4px white,0px 8px white,4px 8px rgba(255,255,255,0.3),20px 8px rgba(255,255,255,0.3),24px 8px white,0px 12px ${c},4px 12px ${c},8px 12px ${c},12px 12px ${c},16px 12px ${c},20px 12px ${c},24px 12px ${c},4px 16px ${c},8px 16px ${c},12px 16px ${c},16px 16px ${c},20px 16px ${c},8px 20px ${c},12px 20px ${c},16px 20px ${c};`;
     }
     update(index) {
@@ -129,7 +132,11 @@ class Gacha {
             }
         }
 
-        if (this.x < -60 || this.x > window.innerWidth + 60) { this.el.remove(); gachaList.splice(index, 1); return; }
+        if (this.x < -60 || this.x > window.innerWidth + 60) { 
+            this.el.remove(); 
+            gachaList.splice(index, 1); 
+            return; 
+        }
         if (this.y + this.radius * 2 > window.innerHeight) {
             this.y = window.innerHeight - this.radius * 2;
             this.vy *= -this.bounce; this.vx *= 0.9;
@@ -146,31 +153,32 @@ class Gacha {
             }
         }
 
-        // ✨ 手机端自动启用 translate3d 开启硬件加速
-        const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-        if (isMobile) {
-            this.el.style.transform = `translate3d(${this.x}px, ${this.y}px, 0)`;
-        } else {
-            this.el.style.transform = `translate(${this.x}px, ${this.y}px)`;
-        }
+        // 统一使用 translate3d 确保全平台硬件加速
+        this.el.style.transform = `translate3d(${this.x}px, ${this.y}px, 0)`;
     }
 }
 
 // --- ✨ 指针监测 ---
 window.addEventListener('mouseenter', () => { isPointerActive = true; });
 window.addEventListener('mouseleave', () => { isPointerActive = false; });
-window.addEventListener('touchstart', () => { isPointerActive = true; }, {passive: false});
+
+// 手机端关键修复：彻底阻止 touchstart 的默认延迟行为
+window.addEventListener('touchstart', (e) => { 
+    isPointerActive = true; 
+    // 如果点击的是标题区域，refreshText 会自行处理
+}, {passive: false});
+
 window.addEventListener('touchend', () => { isPointerActive = false; });
 
 window.addEventListener('mousemove', (e) => {
     if (mouse.lastX === null) {
-        mouse.lastX = e.x;
-        mouse.lastY = e.y;
+        mouse.lastX = e.clientX;
+        mouse.lastY = e.clientY;
     }
-    mouse.vx = e.x - mouse.lastX;
-    mouse.vy = e.y - mouse.lastY;
-    mouse.lastX = e.x; mouse.lastY = e.y;
-    mouse.x = e.x; mouse.y = e.y;
+    mouse.vx = e.clientX - mouse.lastX;
+    mouse.vy = e.clientY - mouse.lastY;
+    mouse.lastX = e.clientX; mouse.lastY = e.clientY;
+    mouse.x = e.clientX; mouse.y = e.clientY;
     isPointerActive = true; 
 });
 
@@ -185,6 +193,8 @@ window.addEventListener('touchmove', (e) => {
     mouse.lastX = touch.clientX; mouse.lastY = touch.clientY;
     mouse.x = touch.clientX; mouse.y = touch.clientY;
     isPointerActive = true;
+    // 阻止页面滚动，让交互更聚焦
+    if(e.cancelable) e.preventDefault();
 }, {passive: false});
 
 function init() {
@@ -224,5 +234,12 @@ function animate() {
 
 init(); animate();
 window.addEventListener('resize', init);
-document.querySelector('.title').addEventListener('mousedown', refreshText);
-document.querySelector('.title').addEventListener('touchstart', refreshText);
+
+// 标题点击事件终极优化
+const title = document.querySelector('.title');
+if (title) {
+    title.addEventListener('mousedown', refreshText);
+    title.addEventListener('touchstart', (e) => {
+        refreshText(e);
+    }, {passive: false});
+}
