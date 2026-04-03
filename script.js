@@ -52,7 +52,6 @@ function playPopEffect() {
 
 // --- 🖱️ 点击喷射逻辑 ---
 function refreshText(e) {
-    // 关键修复：彻底切断系统默认行为和事件冒泡，防止延迟
     if(e) {
         if(e.cancelable) e.preventDefault();
         e.stopPropagation();
@@ -64,15 +63,17 @@ function refreshText(e) {
     } while (randomIndex === lastClickIndex && clickSounds.length > 1);
     lastClickIndex = randomIndex;
     
-    clickSounds[randomIndex].currentTime = 0;
-    clickSounds[randomIndex].play().catch(() => {});
+    // 【核心修复点】：不要直接操作 clickSounds[randomIndex]，而是克隆它
+    // 这样在手机上连续点击时，每一个音效都是独立的，不会互相掐断导致卡顿或报错
+    const soundInstance = clickSounds[randomIndex].cloneNode();
+    soundInstance.volume = 0.4;
+    soundInstance.play().catch(() => {});
 
     if (!isAudioStarted) {
         bgm.play().catch(() => {});
         isAudioStarted = true;
     }
 
-    // 手机端自动启动性能保护
     const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
     const limit = isMobile ? 10 : 80; 
     while (gachaList.length >= limit) {
@@ -109,7 +110,6 @@ class Gacha {
     }
     setGachaStyle() {
         const c = this.color;
-        // 增加 will-change 强制开启手机 GPU 合成层
         this.el.style.cssText = `position:fixed;left:0;top:0;width:4px;height:4px;pointer-events:none;z-index:999;image-rendering:pixelated;will-change:transform;box-shadow:8px 0 white,12px 0 white,16px 0 white,4px 4px white,8px 4px rgba(255,255,255,0.4),12px 4px rgba(255,255,255,0.4),16px 4px rgba(255,255,255,0.4),20px 4px white,0px 8px white,4px 8px rgba(255,255,255,0.3),20px 8px rgba(255,255,255,0.3),24px 8px white,0px 12px ${c},4px 12px ${c},8px 12px ${c},12px 12px ${c},16px 12px ${c},20px 12px ${c},24px 12px ${c},4px 16px ${c},8px 16px ${c},12px 16px ${c},16px 16px ${c},20px 16px ${c},8px 20px ${c},12px 20px ${c},16px 20px ${c};`;
     }
     update(index) {
@@ -152,8 +152,6 @@ class Gacha {
                 this.x += Math.cos(angle) * overlap * 0.5; this.y += Math.sin(angle) * overlap * 0.5;
             }
         }
-
-        // 统一使用 translate3d 确保全平台硬件加速
         this.el.style.transform = `translate3d(${this.x}px, ${this.y}px, 0)`;
     }
 }
@@ -162,10 +160,8 @@ class Gacha {
 window.addEventListener('mouseenter', () => { isPointerActive = true; });
 window.addEventListener('mouseleave', () => { isPointerActive = false; });
 
-// 手机端关键修复：彻底阻止 touchstart 的默认延迟行为
 window.addEventListener('touchstart', (e) => { 
     isPointerActive = true; 
-    // 如果点击的是标题区域，refreshText 会自行处理
 }, {passive: false});
 
 window.addEventListener('touchend', () => { isPointerActive = false; });
@@ -193,7 +189,6 @@ window.addEventListener('touchmove', (e) => {
     mouse.lastX = touch.clientX; mouse.lastY = touch.clientY;
     mouse.x = touch.clientX; mouse.y = touch.clientY;
     isPointerActive = true;
-    // 阻止页面滚动，让交互更聚焦
     if(e.cancelable) e.preventDefault();
 }, {passive: false});
 
@@ -235,7 +230,6 @@ function animate() {
 init(); animate();
 window.addEventListener('resize', init);
 
-// 标题点击事件终极优化
 const title = document.querySelector('.title');
 if (title) {
     title.addEventListener('mousedown', refreshText);
